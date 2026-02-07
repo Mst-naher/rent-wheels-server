@@ -31,18 +31,21 @@ async function run() {
     const productCollection = db.collection("products");
 
     app.get("/products", async (req, res) => {
-     const result = await productCollection.find().toArray(); //promise resolving here
+      const result = await productCollection.find().toArray(); //promise resolving here
 
       res.send(result);
     });
 
     app.post("/products", async (req, res) => {
-      const newProduct = req.body;
+      const data = req.body;
+      console.log(data);
       // const result = await productCollection.insertOne(newProduct);
       res.send({
-        success: true
+        success: true,
       });
     });
+
+    
 
     await client.db("admin").command({ ping: 1 });
     console.log(
