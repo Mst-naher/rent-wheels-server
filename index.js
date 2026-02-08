@@ -29,23 +29,31 @@ async function run() {
 
     const db = client.db("rent_db");
     const productCollection = db.collection("products");
-
+    const userCollection = db.collection("users");
+    //  Featured Cars:
     app.get("/products", async (req, res) => {
       const result = await productCollection.find().toArray(); //promise resolving here
 
       res.send(result);
     });
 
-    app.post("/products", async (req, res) => {
+    app.get("/users", async(req, res)=>{
+     
+      const cursor = userCollection.find();
+      const result = await cursor.toArray();
+
+      res.send(result)
+    })
+
+    app.post("/users", async (req, res) => {
       const data = req.body;
-      console.log(data);
-      // const result = await productCollection.insertOne(newProduct);
+      console.log("user information", data);
+      const result = await userCollection.insertOne(data);
       res.send({
         success: true,
+        result,
       });
     });
-
-    
 
     await client.db("admin").command({ ping: 1 });
     console.log(
