@@ -2,3 +2,4 @@ node_modules
 .env
 serviceKey.json
 firebase-adminsdk-key.json
+encode.js
