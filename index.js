@@ -49,11 +49,32 @@ async function run() {
     const productCollection = db.collection("products");
     const addedCarCollection = db.collection("addedCars");
     const bookingCollection = db.collection("bookings");
+    const usersCollection = db.collection("users");
+
+    //users api
+    app.post("/users", async (req, res) => {
+      const newUser = req.body;
+      const email = req.body.email;
+      const query = { email: email };
+      const existingUser = await usersCollection.findOne(query);
+      if (existingUser) {
+        res.send( {message: "user already exits. do not need to insert again"});
+      } else {
+        const result = await usersCollection.insertOne(newUser);
+        res.send(result);
+      }
+    });
 
     //Booking api:
     app.get("/bookings", async (req, res) => {
       const cursor = bookingCollection.find();
       const result = await cursor.toArray();
+      res.send(result);
+    });
+    app.get("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookingCollection.findOne(query);
       res.send(result);
     });
 
@@ -67,13 +88,6 @@ async function run() {
 
       const cursor = bookingCollection.find(query);
       const result = await cursor.toArray();
-      res.send(result);
-    });
-
-    app.get("/bookings/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await bookingCollection.findOne(query);
       res.send(result);
     });
 
@@ -151,6 +165,13 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/addedCars/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await addedCarCollection.findOne(query);
+      res.send(result);
+    });
+
     app.get("/addedCars", async (req, res) => {
       console.log(req.query);
       const email = req.query.created_by;
@@ -163,11 +184,6 @@ async function run() {
       const result = await cursor.toArray();
 
       res.send(result);
-    });
-    app.get("/addedCars/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await addedCarCollection.findOne(query);
     });
 
     app.post("/addedCars", async (req, res) => {
@@ -186,7 +202,10 @@ async function run() {
       const updatedAddedCars = req.body;
       const query = { _id: new ObjectId(id) };
       const update = {
-        $set: { updatedAddedCars },
+        $set: {
+          providerName: updatedAddedCars.providerName,
+          rentPricePerDay: updatedAddedCars.rentPricePerDay,
+        },
       };
       const result = await userCollection.updateOne(query, update);
       res.send(result);
