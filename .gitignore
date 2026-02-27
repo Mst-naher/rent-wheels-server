@@ -1,5 +1,8 @@
 node_modules
 .env
 serviceKey.json
-firebase-adminsdk-key.json
+# firebase-adminsdk-key.json
 encode.js
+
+rent-wheels-firebase-adminsdk.json
+.vercel

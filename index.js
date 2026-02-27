@@ -1,17 +1,18 @@
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 const app = express();
 const admin = require("firebase-admin");
 const port = process.env.PORT || 3000;
 
+// index.js
 const decoded = Buffer.from(
   process.env.FIREBASE_SERVICE_KEY,
   "base64",
 ).toString("utf8");
 const serviceAccount = JSON.parse(decoded);
-
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -25,7 +26,36 @@ const logger = (req, res, next) => {
   next();
 };
 
-const verifyFirebseToken = (req, res, next) => {};
+// const verifyFirebaseToken = async (req, res, next) => {
+//   console.log("in the verify middleware", req.headers.authorization);
+//   if (!req.headers.authorization) {
+//     //do not allow to go
+//     return res.status(401).send({ message: "unauthorized access 1" });
+//   }
+//   const token = req.headers.authorization.split(" ")[1];
+//   if (!token) {
+//     return res.status(401).send({ message: "unauthorized access 2" });
+//   }
+
+//   try {
+//     const userInfo = await admin.verifyIdToken(token);
+//     console.log("after token validation", userInfo);
+//     next();
+//   } catch {
+//     return res.status(401).send({ message: "unauthorized access" });
+//   }
+
+//   next();
+// };
+
+
+const verifyJWTToken = (req, res, next) =>{
+  console.log('in middleware', req.headers)
+
+  next();
+}
+
+
 
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.yp7cb5e.mongodb.net/?appName=Cluster0`;
 
@@ -50,6 +80,23 @@ async function run() {
     const addedCarCollection = db.collection("addedCars");
     const bookingCollection = db.collection("bookings");
     const usersCollection = db.collection("users");
+    const allProductsCollection = db.collection("allProducts");
+
+    //jwt related apis
+    app.post("/getToken", (req, res) => {
+      const loggedUser = req.body;
+      const token = jwt.sign(loggedUser, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
+      res.send({ token: token });
+    });
+
+    //all product api
+    app.get("/allProducts", async (req, res) => {
+      const cursor = productCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
     //users api
     app.post("/users", async (req, res) => {
@@ -58,7 +105,9 @@ async function run() {
       const query = { email: email };
       const existingUser = await usersCollection.findOne(query);
       if (existingUser) {
-        res.send( {message: "user already exits. do not need to insert again"});
+        res.send({
+          message: "user already exits. do not need to insert again",
+        });
       } else {
         const result = await usersCollection.insertOne(newUser);
         res.send(result);
@@ -66,30 +115,44 @@ async function run() {
     });
 
     //Booking api:
-    app.get("/bookings", async (req, res) => {
-      const cursor = bookingCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
+
     app.get("/bookings/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await bookingCollection.findOne(query);
       res.send(result);
     });
-
-    app.get("/bookings", async (req, res) => {
-      // console.log(req.query);
-      const email = req.query.userEmail;
+    //JWT Token related
+    app.get("/bookings", verifyJWTToken, async (req, res) => {
+      // console.log("headers", req.headers);
+      const email = req.query.email;
       const query = {};
       if (email) {
-        query.userEmail = email;
+        query.rent_email = email;
       }
-
       const cursor = bookingCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
     });
+
+    //bookings with firebase token verify:
+    // app.get("/bookings", logger, async (req, res) => {
+    // console.log('header', req.headers)
+    // console.log(req.query);
+    //   const email = req.query.email;
+    //   const query = {};
+    //   if (email) {
+    //     query.rent_email = email;
+    //   }
+    //   const result = await bookingCollection.find(query).toArray();
+    //   res.send(result);
+    // });
+
+    // app.get("/bookings", async (req, res) => {
+    //   const cursor = bookingCollection.find();
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
 
     app.post("/bookings", async (req, res) => {
       const newBooking = req.body;
@@ -102,7 +165,7 @@ async function run() {
       const updatedBooking = req.body;
       const query = { _id: new ObjectId(id) };
       const update = {
-        $set: { updatedBooking },
+        $set: updatedBooking,
       };
       const result = await bookingCollection.updateOne(query, update);
       res.send(result);
@@ -116,6 +179,7 @@ async function run() {
     });
 
     //  Featured Cars:
+
     app.get("/products", async (req, res) => {
       const cursor = productCollection.find().sort().skip(0).limit(6);
 
@@ -203,11 +267,12 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const update = {
         $set: {
+          carName: updatedAddedCars.carName,
           providerName: updatedAddedCars.providerName,
           rentPricePerDay: updatedAddedCars.rentPricePerDay,
         },
       };
-      const result = await userCollection.updateOne(query, update);
+      const result = await addedCarCollection.updateOne(query, update);
       res.send(result);
     });
 
